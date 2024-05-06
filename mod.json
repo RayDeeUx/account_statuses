@@ -1,13 +1,13 @@
 {
-	"geode": "2.0.0",
-	"version": "v1.0.2",
+	"geode": "2.0.0-beta.25",
+	"gd": {
+		"android": "2.205",
+		"win": "2.204"
+	},
+	"version": "v1.0.3",
 	"id": "relative.account_statuses",
 	"name": "Account Statuses",
 	"developer": "relative",
-	"description": "Online, Idle, DND, Invisible",
-	"gd": {
-		"android": "*",
-		"win": "2.204"
-	},
+	"description": "Adds Discord-like statuses (Online, Idle, DND, and Invisible) to GD profiles.",
 	"repository": "https://github.com/relativemodder/account_statuses"
 }

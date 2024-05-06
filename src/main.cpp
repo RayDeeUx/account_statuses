@@ -17,11 +17,15 @@ bool safeToUpdate = false;
 
 
 class $modify(StatusProfilePage, ProfilePage) {
-	bool status_own_profile;
-	bool status_loaded;
-	std::string status_string;
-
-
+	struct Fields {
+		bool status_own_profile;
+		bool status_loaded;
+		std::string status_string;
+	};
+	static void onModify(auto & self)
+	{
+		(void) self.setHookPriority("ProfilePage::loadPageFromUserInfo", -1000);
+	}
 	void roundRobinStatus() {
 		if (m_fields->status_string == "null") {
 			m_fields->status_string = "online";
@@ -49,12 +53,11 @@ class $modify(StatusProfilePage, ProfilePage) {
 		}
 	}
 
-
 	void onStatusClick(CCObject* sender) {
 		if (!m_fields->status_loaded) return;
 
 		if (m_accountID != GJAccountManager::get()->m_accountID) {
-			const char* user_status = m_fields->status_string == "null" ? "Not set" : m_fields->status_string.c_str();
+			const char* user_status = m_fields->status_string == "null" ? "This user hasn't set a status." : m_fields->status_string.c_str();
 
 			FLAlertLayer::create(
 				std::string(std::string(m_usernameLabel->getString()) + std::string("'s status")).c_str(),
@@ -64,11 +67,11 @@ class $modify(StatusProfilePage, ProfilePage) {
 			return;
 		}
 
-		log::debug("Status string: {}", m_fields->status_string);
+		// log::debug("Status string: {}", m_fields->status_string);
 
 		roundRobinStatus();
 
-		log::debug("Updated status string: {}", m_fields->status_string);
+		// log::debug("Updated status string: {}", m_fields->status_string);
 
 		updateStatusDot(m_fields->status_string);
 		web::AsyncWebRequest()
@@ -87,10 +90,17 @@ class $modify(StatusProfilePage, ProfilePage) {
 				)->show();
 			})
 			.expect([](std::string const& error) {
-				Notification::create(
-					"Error updating status: " + error,
-					CCSprite::create("GJ_deleteIcon_001.png")
-				)->show();
+				if (error.find("DOCTYPE HTML") != std::string::npos) {
+					Notification::create(
+						"Error updating status: " + error,
+						CCSprite::create("GJ_deleteIcon_001.png")
+					)->show();
+				} else {
+					Notification::create(
+						"Error updating status. Please report this error ASAP." + error,
+						CCSprite::create("GJ_reportBtn_001.png")
+					)->show();
+				}
 			});
 	}
 
@@ -104,28 +114,36 @@ class $modify(StatusProfilePage, ProfilePage) {
 
 		auto status_menu = CCMenu::create();
 
+		status_menu->setID("status-menu"_spr);
+		status_menu->setZOrder(300);
 		status_menu->addChild(status_dot);
-		addChild(status_menu);
+		m_mainLayer->addChild(status_menu);
 
 		status_dot->setID("status_dot"_spr);
 
-		auto winSize = CCDirector::get()->getWinSize();
-
-		status_menu->setPosition({winSize.width / 2.f - 170.f, 220.f});
+		if (Loader::get()->isModLoaded("itzkiba.better_progression")) {
+			if (auto theBG = m_mainLayer->getChildByID("icon-background")) {
+				status_menu->setPosition({0, 0});
+				status_dot->setPosition({theBG->getPositionX(), 210.5f});
+				status_dot->setContentSize({10.f, 10.f}); // a bit easier to click on when betterprogression is installed
+			}
+		} else {
+			status_menu->setPosition({(CCDirector::get()->getWinSize().width / 2.f) - 170.f, 220.f});
+			status_dot->setContentSize({8.750f, 12.5f});
+		}
 		status_dot->setScale(1.825f);
-		status_dot->setContentSize({8.750f, 12.5f});
 
 		status_dot->setColor(cc3bFromHexString("#BEBEBE").value());
 	}
 
 	void updateStatusDot(std::string status) {
-		if (this == nullptr) return;
+		if (!this) return;
 
 		m_fields->status_string = status;
 
 		auto status_dot = static_cast<CCMenuItemLabel*>(getChildByIDRecursive("status_dot"_spr));
 
-		if (status_dot == nullptr) return;
+		if (!status_dot) return;
 
 		status_dot->setColor(colors_map[status]);
 	}
@@ -133,7 +151,7 @@ class $modify(StatusProfilePage, ProfilePage) {
 	void setupStatus(int account_id, bool own_profile) {
 		addStatusDot(own_profile);
 
-		log::info("Account ID: {}", account_id);
+		// log::info("Account ID: {}", account_id);
 
 		web::AsyncWebRequest()
 			.fetch("https://gdstatus.7m.pl/getStatus.php?accountID=" + std::to_string(account_id))
@@ -145,12 +163,18 @@ class $modify(StatusProfilePage, ProfilePage) {
 				updateStatusDot(result);
 			})
 			.expect([](std::string const& error) {
-				Notification::create(
-					std::string("Error fetching status: ") + error,
-					CCSprite::create("GJ_deleteIcon_001.png")
-				)->show();
+				if (error.find("DOCTYPE HTML") != std::string::npos) {
+					Notification::create(
+						"Error updating status: " + error,
+						CCSprite::create("GJ_deleteIcon_001.png")
+					)->show();
+				} else {
+					Notification::create(
+						"Error updating status. Please report this error ASAP." + error,
+						CCSprite::create("GJ_reportBtn_001.png")
+					)->show();
+				}
 			});
-		
 	}
 
 

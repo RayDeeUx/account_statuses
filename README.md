@@ -1,3 +1,3 @@
 # Account Statuses
 
-Online, Idle, DND, Invisible
+Adds Discord-like statuses (Online, Idle, DND, and Invisible) to GD profiles.
